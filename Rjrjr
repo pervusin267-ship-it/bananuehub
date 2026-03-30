@@ -2,59 +2,49 @@ local UIS = game:GetService("UserInputService")
 local p = game.Players.LocalPlayer
 local rs = game:GetService("RunService")
 
-local function GetMyTycoon()
-    local char = p.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return nil end
-    local root = char.HumanoidRootPart
-    local closest, dist = nil, 150
-    for _, v in pairs(workspace:GetDescendants()) do
-        if v:IsA("Model") and (v.Name:lower():find("tycoon") or v:FindFirstChild("Owner")) then
-            local pPart = v.PrimaryPart or v:FindFirstChildWhichIsA("BasePart")
-            if pPart then
-                local d = (root.Position - pPart.Position).Magnitude
-                if d < dist then closest = v dist = d end
+_G.YinYangActive = false
+
+local function GetMyBase()
+    local myBase = nil
+    for _, mod in pairs(workspace:GetDescendants()) do
+        if mod:IsA("Model") and not mod:IsDescendantOf(p.Character) then
+            for _, txt in pairs(mod:GetDescendants()) do
+                if (txt:IsA("TextLabel") or txt:IsA("TextObject")) and (txt.Text:find("ТВОЯ БАЗА") or txt.Text:find(p.Name)) then
+                    myBase = mod
+                    break
+                end
             end
         end
+        if myBase then break end
     end
-    return closest
+    return myBase
 end
 
 local function ApplyYinYang()
-    local t = GetMyTycoon()
-    if t then
-        for _, v in pairs(t:GetDescendants()) do
-            if v:IsA("BasePart") then
-                v.Material = Enum.Material.SmoothPlastic
-                if v.Name:lower():find("wall") then v.Color = Color3.new(1,1,1)
-                else v.Color = Color3.new(0,0,0) end
-            end
-        end
-        local s = t:FindFirstChild("Entrance") or t:FindFirstChildWhichIsA("BasePart")
-        if s then
-            local g = Instance.new("SurfaceGui", s)
-            g.Face, g.AlwaysOnTop, g.CanvasSize = Enum.NormalId.Front, true, Vector2.new(800,300)
-            local l = Instance.new("TextLabel", g)
-            l.Size, l.BackgroundTransparency, l.Text = UDim2.new(1,0,1,0), 1, p.DisplayName
-            l.TextColor3, l.Font, l.TextScaled = Color3.new(1,1,1), Enum.Font.GothamBold, true
-        end
-    end
-end
-
-local function ApplyRainbow()
-    local t = GetMyTycoon()
-    if t then
-        task.spawn(function()
-            while t.Parent do
-                local c = Color3.fromHSV(tick() % 5 / 5, 1, 1)
-                for _, v in pairs(t:GetDescendants()) do
-                    if v:IsA("BasePart") and not v.Name:lower():find("floor") then
-                        v.Color = c
-                        v.Material = Enum.Material.Neon
+    local b = GetMyBase()
+    if b then
+        _G.YinYangActive = not _G.YinYangActive
+        for _, o in pairs(b:GetDescendants()) do
+            if o:IsA("BasePart") then
+                if o.Transparency > 0.8 or o.Size.Magnitude < 0.5 then continue end
+                if _G.YinYangActive then
+                    local n = o.Name:lower()
+                    local s = o.Size
+                    if n:find("window") or n:find("glass") then
+                        o.Material, o.Color, o.Transparency = Enum.Material.Glass, Color3.new(0, 0, 0), 0.6
+                    elseif n:find("frame") or n:find("border") or n:find("trim") or n:find("pillar") or (s.X < 2.2 and s.Z < 2.2) or (s.X < 2.2 and s.Y < 2.2) then
+                        o.Material, o.Color = Enum.Material.SmoothPlastic, Color3.new(0, 0, 0)
+                    elseif n:find("wall") or n:find("brick") or n:find("floor") or n:find("ceiling") or n:find("stair") or n:find("base") then
+                        o.Material, o.Color = Enum.Material.Brick, Color3.new(1, 1, 1)
+                        o.Transparency = 0
+                    else
+                        o.Material, o.Color = Enum.Material.SmoothPlastic, Color3.new(1, 1, 1)
                     end
+                else
+                    o.Material, o.Color, o.Transparency = Enum.Material.Plastic, Color3.new(1, 1, 1), 0
                 end
-                task.wait(0.1)
             end
-        end)
+        end
     end
 end
 
@@ -66,21 +56,12 @@ local function makeDraggable(f, h)
     UIS.InputChanged:Connect(function(i) if i == di and d then local delta = i.Position - ds f.Position = UDim2.new(sp.X.Scale, sp.X.Offset + delta.X, sp.Y.Scale, sp.Y.Offset + delta.Y) end end)
 end
 
-local sG = Instance.new("ScreenGui", p.PlayerGui)
-sG.Name = "PhoenixSelector"
-local sF = Instance.new("Frame", sG)
-sF.Size, sF.Position, sF.BackgroundColor3 = UDim2.new(0, 350, 0, 200), UDim2.new(0.5, -175, 0.5, -100), Color3.fromRGB(20, 20, 20)
-Instance.new("UICorner", sF)
-makeDraggable(sF)
-
-local tl = Instance.new("TextLabel", sF)
-tl.Size, tl.Text, tl.TextColor3, tl.BackgroundTransparency, tl.Font, tl.TextSize = UDim2.new(1, 0, 0, 50), "PHOENIX HUB: SELECT GAME", Color3.new(1,1,1), 1, Enum.Font.GothamBold, 18
-
-local function createMenu(gN)
-    sG:Destroy()
+local function createMainInterface(gameType)
+    if p.PlayerGui:FindFirstChild("PhoenixMenu") then p.PlayerGui.PhoenixMenu:Destroy() end
     local sg = Instance.new("ScreenGui", p.PlayerGui)
-    sg.Name = "PhoenixHub"
+    sg.Name = "PhoenixMenu"
     sg.ResetOnSpawn = false
+
     local ob = Instance.new("TextButton", sg)
     ob.Size, ob.Position, ob.BackgroundColor3, ob.Text, ob.TextColor3 = UDim2.new(0, 55, 0, 55), UDim2.new(1, -70, 0.7, 0), Color3.fromRGB(20, 20, 20), "PH", Color3.new(1, 1, 1), 16
     ob.Font = Enum.Font.GothamBold
@@ -90,74 +71,56 @@ local function createMenu(gN)
     makeDraggable(ob)
 
     local m = Instance.new("Frame", sg)
-    m.Size, m.Position, m.BackgroundColor3, m.Visible = UDim2.new(0, 400, 0, 350), UDim2.new(0.5, -200, 0.5, -175), Color3.fromRGB(15, 15, 15), false
+    m.Size, m.Position, m.BackgroundColor3, m.Visible = UDim2.new(0, 300, 0, 300), UDim2.new(0.5, -150, 0.5, -150), Color3.fromRGB(15, 15, 15), false
     Instance.new("UICorner", m)
     local ms = Instance.new("UIStroke", m)
     ms.Thickness = 2
     makeDraggable(m)
 
-    local sb = Instance.new("Frame", m)
-    sb.Size, sb.BackgroundColor3 = UDim2.new(0, 100, 1, 0), Color3.fromRGB(20, 20, 20)
-    Instance.new("UICorner", sb)
+    local cont = Instance.new("Frame", m)
+    cont.Size, cont.Position, cont.BackgroundTransparency = UDim2.new(1, -20, 1, -20), UDim2.new(0, 10, 0, 10), 1
+    Instance.new("UIListLayout", cont).Padding = UDim.new(0, 10)
 
-    local c = Instance.new("Frame", m)
-    c.Position, c.Size, c.BackgroundTransparency = UDim2.new(0, 110, 0, 10), UDim2.new(1, -120, 1, -20), 1
-
-    local mp = Instance.new("Frame", c)
-    mp.Size, mp.Visible, mp.BackgroundTransparency = UDim2.new(1, 0, 1, 0), true, 1
-    Instance.new("UIListLayout", mp).Padding = UDim.new(0, 10)
-
-    local bp = Instance.new("Frame", c)
-    bp.Size, bp.Visible, bp.BackgroundTransparency = UDim2.new(1, 0, 1, 0), false, 1
-    Instance.new("UIListLayout", bp).Padding = UDim.new(0, 10)
-
-    local function cT(n, y, pge)
-        local b = Instance.new("TextButton", sb)
-        b.Size, b.Position, b.Text, b.BackgroundColor3, b.TextColor3, b.Font = UDim2.new(0.9, 0, 0, 40), UDim2.new(0.05, 0, 0, y), n, Color3.fromRGB(30, 30, 30), Color3.new(1,1,1), Enum.Font.GothamBold
+    local function cB(txt, func)
+        local b = Instance.new("TextButton", cont)
+        b.Size, b.Text, b.BackgroundColor3, b.TextColor3, b.Font = UDim2.new(1, 0, 0, 45), txt, Color3.fromRGB(30,30,30), Color3.new(1,1,1), Enum.Font.GothamBold
         Instance.new("UICorner", b)
-        b.MouseButton1Click:Connect(function() mp.Visible, bp.Visible = false, false pge.Visible = true end)
+        b.MouseButton1Click:Connect(func)
     end
 
-    cT("Main", 10, mp)
-    if gN == "Brainrot" then cT("Base", 60, bp) end
-
-    _G.N = false
-    rs.Stepped:Connect(function() if _G.N and p.Character then for _, v in pairs(p.Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end end end)
-    local nb = Instance.new("TextButton", mp)
-    nb.Size, nb.BackgroundColor3, nb.Text, nb.TextColor3 = UDim2.new(1, 0, 0, 40), Color3.fromRGB(30, 30, 30), "NOCLIP: OFF (N)", Color3.new(1,1,1)
-    Instance.new("UICorner", nb)
-    nb.MouseButton1Click:Connect(function() _G.N = not _G.N nb.Text = "NOCLIP: " .. (_G.N and "ON" or "OFF") end)
-
-    UIS.InputBegan:Connect(function(i, g) if not g and i.KeyCode == Enum.KeyCode.N then _G.N = not _G.N nb.Text = "NOCLIP: " .. (_G.N and "ON" or "OFF") end end)
-
-    if gN == "Brainrot" then
-        local rbb = Instance.new("TextButton", bp)
-        rbb.Size, rbb.Text, rbb.BackgroundColor3, rbb.TextColor3 = UDim2.new(1,0,0,40), "RAINBOW BASE", Color3.fromRGB(40,40,40), Color3.new(1,1,1)
-        Instance.new("UICorner", rbb)
-        rbb.MouseButton1Click:Connect(function() ApplyRainbow() rbb.Text = "RAINBOW ACTIVE!" end)
-
-        local yb = Instance.new("TextButton", bp)
-        yb.Size, yb.Text, yb.BackgroundColor3, yb.TextColor3 = UDim2.new(1,0,0,40), "YIN YANG BASE", Color3.fromRGB(20,20,20), Color3.new(1,1,1)
-        Instance.new("UICorner", yb)
-        local ys = Instance.new("UIStroke", yb)
-        ys.Thickness, ys.Color = 2, Color3.new(1,1,1)
-        yb.MouseButton1Click:Connect(function() ApplyYinYang() yb.Text = "YIN YANG ACTIVE!" end)
+    if gameType == "Brainrot" then
+        cB("YIN YANG BASE", function() ApplyYinYang() end)
+        cB("WALKSPEED", function() p.Character.Humanoid.WalkSpeed = 100 end)
+    elseif gameType == "DeadRails" then
+        cB("DEAD RAILS HUB", function() print("Dead Rails logic here") end)
+        cB("ESP PLAYERS", function() print("ESP Active") end)
     end
 
     task.spawn(function() while task.wait() do local clr = Color3.fromHSV(tick() % 5 / 5, 0.8, 1) bs.Color, ms.Color, ob.TextColor3 = clr, clr, clr end end)
     ob.MouseButton1Click:Connect(function() m.Visible = not m.Visible end)
-    local si = Instance.new("TextBox", mp)
-    si.Size, si.PlaceholderText, si.BackgroundColor3, si.TextColor3 = UDim2.new(1,0,0,40), "WALKSPEED (1-400)", Color3.fromRGB(30,30,30), Color3.new(1,1,1)
-    Instance.new("UICorner", si)
-    si.FocusLost:Connect(function() if tonumber(si.Text) and p.Character.Humanoid then p.Character.Humanoid.WalkSpeed = math.clamp(tonumber(si.Text), 1, 400) end end)
 end
 
-local bB = Instance.new("TextButton", sF)
-bB.Size, bB.Position, bB.Text, bB.BackgroundColor3, bB.TextColor3 = UDim2.new(0.9, 0, 0, 50), UDim2.new(0.05, 0, 0.3, 0), "Steal Brainrot", Color3.fromRGB(0, 120, 255), Color3.new(1,1,1)
-Instance.new("UICorner", bB)
-bB.MouseButton1Click:Connect(function() createMenu("Brainrot") end)
+local sG = Instance.new("ScreenGui", p.PlayerGui)
+local sF = Instance.new("Frame", sG)
+sF.Size, sF.Position, sF.BackgroundColor3 = UDim2.new(0, 400, 0, 250), UDim2.new(0.5, -200, 0.5, -125), Color3.fromRGB(20, 20, 20)
+Instance.new("UICorner", sF)
+makeDraggable(sF)
 
-local dB = Instance.new("TextButton", sF)
-dB.Size, dB.Position, dB.Text, dB.BackgroundColor3, dB.TextColor3 = UDim2.new(0.9, 0, 0, 50), UDim2.new(0.05, 0, 0.6, 0), "Dead Rails", Color3.fromRGB(200, 0, 0), Color3.new(1,1,1)
-Instance.new("UICorner", dB)
-dB.MouseButton1Click:Connect(function() createMenu("DeadRails") end)
+local tl = Instance.new("TextLabel", sF)
+tl.Size, tl.Position, tl.Text = UDim2.new(1, 0, 0, 50), UDim2.new(0, 0, 0, 10), "PHOENIX HUB"
+tl.TextColor3, tl.BackgroundTransparency, tl.Font, tl.TextSize = Color3.new(1, 1, 1), 1, Enum.Font.GothamBold, 22
+
+local st = Instance.new("TextLabel", sF)
+st.Size, st.Position, st.Text = UDim2.new(1, 0, 0, 30), UDim2.new(0, 0, 0, 50), "Пожалуйста, выберите игру"
+st.TextColor3, st.BackgroundTransparency, st.Font, st.TextSize = Color3.fromRGB(200, 200, 200), 1, Enum.Font.Gotham, 16
+
+local function createChoice(txt, pos, gType)
+    local b = Instance.new("TextButton", sF)
+    b.Size, b.Position, b.Text = UDim2.new(0.8, 0, 0, 50), pos, txt
+    b.BackgroundColor3, b.TextColor3, b.Font, b.TextSize = Color3.fromRGB(40, 40, 40), Color3.new(1, 1, 1), Enum.Font.GothamBold, 16
+    Instance.new("UICorner", b)
+    b.MouseButton1Click:Connect(function() sG:Destroy() createMainInterface(gType) end)
+end
+
+createChoice("Steal a Brainrot Tycoon", UDim2.new(0.1, 0, 0.4, 0), "Brainrot")
+createChoice("Dead Rails", UDim2.new(0.1, 0, 0.65, 0), "DeadRails")
