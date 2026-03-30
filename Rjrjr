@@ -2,36 +2,59 @@ local UIS = game:GetService("UserInputService")
 local p = game.Players.LocalPlayer
 local rs = game:GetService("RunService")
 
-local function ColorMyBase()
+local function GetMyTycoon()
     local char = p.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if obj.Name == "Owner" and obj.Value == p.Name then
-            local tycoon = obj.Parent
-            for _, part in pairs(tycoon:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    if part.Name:lower():find("wall") then
-                        part.Color = Color3.new(1, 1, 1)
-                        part.Material = Enum.Material.SmoothPlastic
-                    elseif part.Name:lower():find("floor") or part.Name:lower():find("trim") then
-                        part.Color = Color3.new(0, 0, 0)
-                    end
-                end
-            end
-            local main = tycoon:FindFirstChild("Entrance") or tycoon:FindFirstChild("MainPart")
-            if main then
-                local sGui = Instance.new("SurfaceGui", main)
-                sGui.Face = Enum.NormalId.Front
-                sGui.CanvasSize = Vector2.new(800, 300)
-                local lbl = Instance.new("TextLabel", sGui)
-                lbl.Size = UDim2.new(1,0,1,0)
-                lbl.BackgroundTransparency = 1
-                lbl.Text = p.DisplayName
-                lbl.TextColor3 = Color3.new(1,1,1)
-                lbl.Font = Enum.Font.GothamBold
-                lbl.TextScaled = true
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return nil end
+    local root = char.HumanoidRootPart
+    local closest, dist = nil, 150
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("Model") and (v.Name:lower():find("tycoon") or v:FindFirstChild("Owner")) then
+            local pPart = v.PrimaryPart or v:FindFirstChildWhichIsA("BasePart")
+            if pPart then
+                local d = (root.Position - pPart.Position).Magnitude
+                if d < dist then closest = v dist = d end
             end
         end
+    end
+    return closest
+end
+
+local function ApplyYinYang()
+    local t = GetMyTycoon()
+    if t then
+        for _, v in pairs(t:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.Material = Enum.Material.SmoothPlastic
+                if v.Name:lower():find("wall") then v.Color = Color3.new(1,1,1)
+                else v.Color = Color3.new(0,0,0) end
+            end
+        end
+        local s = t:FindFirstChild("Entrance") or t:FindFirstChildWhichIsA("BasePart")
+        if s then
+            local g = Instance.new("SurfaceGui", s)
+            g.Face, g.AlwaysOnTop, g.CanvasSize = Enum.NormalId.Front, true, Vector2.new(800,300)
+            local l = Instance.new("TextLabel", g)
+            l.Size, l.BackgroundTransparency, l.Text = UDim2.new(1,0,1,0), 1, p.DisplayName
+            l.TextColor3, l.Font, l.TextScaled = Color3.new(1,1,1), Enum.Font.GothamBold, true
+        end
+    end
+end
+
+local function ApplyRainbow()
+    local t = GetMyTycoon()
+    if t then
+        task.spawn(function()
+            while t.Parent do
+                local c = Color3.fromHSV(tick() % 5 / 5, 1, 1)
+                for _, v in pairs(t:GetDescendants()) do
+                    if v:IsA("BasePart") and not v.Name:lower():find("floor") then
+                        v.Color = c
+                        v.Material = Enum.Material.Neon
+                    end
+                end
+                task.wait(0.1)
+            end
+        end)
     end
 end
 
@@ -50,8 +73,8 @@ sF.Size, sF.Position, sF.BackgroundColor3 = UDim2.new(0, 350, 0, 200), UDim2.new
 Instance.new("UICorner", sF)
 makeDraggable(sF)
 
-local t = Instance.new("TextLabel", sF)
-t.Size, t.Text, t.TextColor3, t.BackgroundTransparency, t.Font, t.TextSize = UDim2.new(1, 0, 0, 50), "PHOENIX HUB: SELECT GAME", Color3.new(1,1,1), 1, Enum.Font.GothamBold, 18
+local tl = Instance.new("TextLabel", sF)
+tl.Size, tl.Text, tl.TextColor3, tl.BackgroundTransparency, tl.Font, tl.TextSize = UDim2.new(1, 0, 0, 50), "PHOENIX HUB: SELECT GAME", Color3.new(1,1,1), 1, Enum.Font.GothamBold, 18
 
 local function createMenu(gN)
     sG:Destroy()
@@ -59,8 +82,9 @@ local function createMenu(gN)
     sg.Name = "PhoenixHub"
     sg.ResetOnSpawn = false
     local ob = Instance.new("TextButton", sg)
-    ob.Size, ob.Position, ob.BackgroundColor3, ob.Text, ob.TextColor3 = UDim2.new(0, 55, 0, 55), UDim2.new(1, -70, 0.7, 0), Color3.fromRGB(20, 20, 20), "PH", Color3.new(1,1,1)
-    Instance.new("UICorner", ob).CornerRadius = UDim.new(1,0)
+    ob.Size, ob.Position, ob.BackgroundColor3, ob.Text, ob.TextColor3 = UDim2.new(0, 55, 0, 55), UDim2.new(1, -70, 0.7, 0), Color3.fromRGB(20, 20, 20), "PH", Color3.new(1, 1, 1), 16
+    ob.Font = Enum.Font.GothamBold
+    Instance.new("UICorner", ob).CornerRadius = UDim.new(1, 0)
     local bs = Instance.new("UIStroke", ob)
     bs.Thickness = 3
     makeDraggable(ob)
@@ -75,11 +99,14 @@ local function createMenu(gN)
     local sb = Instance.new("Frame", m)
     sb.Size, sb.BackgroundColor3 = UDim2.new(0, 100, 1, 0), Color3.fromRGB(20, 20, 20)
     Instance.new("UICorner", sb)
+
     local c = Instance.new("Frame", m)
     c.Position, c.Size, c.BackgroundTransparency = UDim2.new(0, 110, 0, 10), UDim2.new(1, -120, 1, -20), 1
+
     local mp = Instance.new("Frame", c)
     mp.Size, mp.Visible, mp.BackgroundTransparency = UDim2.new(1, 0, 1, 0), true, 1
     Instance.new("UIListLayout", mp).Padding = UDim.new(0, 10)
+
     local bp = Instance.new("Frame", c)
     bp.Size, bp.Visible, bp.BackgroundTransparency = UDim2.new(1, 0, 1, 0), false, 1
     Instance.new("UIListLayout", bp).Padding = UDim.new(0, 10)
@@ -96,7 +123,6 @@ local function createMenu(gN)
 
     _G.N = false
     rs.Stepped:Connect(function() if _G.N and p.Character then for _, v in pairs(p.Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end end end)
-
     local nb = Instance.new("TextButton", mp)
     nb.Size, nb.BackgroundColor3, nb.Text, nb.TextColor3 = UDim2.new(1, 0, 0, 40), Color3.fromRGB(30, 30, 30), "NOCLIP: OFF (N)", Color3.new(1,1,1)
     Instance.new("UICorner", nb)
@@ -108,14 +134,14 @@ local function createMenu(gN)
         local rbb = Instance.new("TextButton", bp)
         rbb.Size, rbb.Text, rbb.BackgroundColor3, rbb.TextColor3 = UDim2.new(1,0,0,40), "RAINBOW BASE", Color3.fromRGB(40,40,40), Color3.new(1,1,1)
         Instance.new("UICorner", rbb)
-        rbb.MouseButton1Click:Connect(function() loadstring(game:HttpGet('https://sirius.menu'))() end)
+        rbb.MouseButton1Click:Connect(function() ApplyRainbow() rbb.Text = "RAINBOW ACTIVE!" end)
 
         local yb = Instance.new("TextButton", bp)
         yb.Size, yb.Text, yb.BackgroundColor3, yb.TextColor3 = UDim2.new(1,0,0,40), "YIN YANG BASE", Color3.fromRGB(20,20,20), Color3.new(1,1,1)
         Instance.new("UICorner", yb)
         local ys = Instance.new("UIStroke", yb)
         ys.Thickness, ys.Color = 2, Color3.new(1,1,1)
-        yb.MouseButton1Click:Connect(function() ColorMyBase() yb.Text = "COLORED!" end)
+        yb.MouseButton1Click:Connect(function() ApplyYinYang() yb.Text = "YIN YANG ACTIVE!" end)
     end
 
     task.spawn(function() while task.wait() do local clr = Color3.fromHSV(tick() % 5 / 5, 0.8, 1) bs.Color, ms.Color, ob.TextColor3 = clr, clr, clr end end)
