@@ -102,6 +102,40 @@ local function createMenu(gameName)
     createTab("Main", 10, mainPage)
     if gameName == "Brainrot" then createTab("Base", 60, basePage) end
 
+    -- ЛОГИКА NOCLIP
+    _G.Noclip = false
+    local function ToggleNoclip()
+        _G.Noclip = not _G.Noclip
+    end
+
+    rs.Stepped:Connect(function()
+        if _G.Noclip then
+            if p.Character then
+                for _, v in pairs(p.Character:GetDescendants()) do
+                    if v:IsA("BasePart") and v.CanCollide then
+                        v.CanCollide = false
+                    end
+                end
+            end
+        end
+    end)
+
+    UIS.InputBegan:Connect(function(input, gpe)
+        if not gpe and input.KeyCode == Enum.KeyCode.N then
+            ToggleNoclip()
+        end
+    end)
+
+    -- КНОПКА NOCLIP В МЕНЮ
+    local noclipBtn = Instance.new("TextButton", mainPage)
+    noclipBtn.Size, noclipBtn.BackgroundColor3 = UDim2.new(1, 0, 0, 40), Color3.fromRGB(30, 30, 30)
+    noclipBtn.Text, noclipBtn.TextColor3 = "NOCLIP: OFF (N)", Color3.new(1, 1, 1)
+    Instance.new("UICorner", noclipBtn)
+    noclipBtn.MouseButton1Click:Connect(function()
+        ToggleNoclip()
+        noclipBtn.Text = "NOCLIP: " .. (_G.Noclip and "ON" or "OFF") .. " (N)"
+    end)
+
     task.spawn(function()
         while task.wait() do
             local color = Color3.fromHSV(tick() % 5 / 5, 0.8, 1)
