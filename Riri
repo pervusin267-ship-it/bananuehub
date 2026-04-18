@@ -1,0 +1,132 @@
+_G.UIS = game:GetService("UserInputService")
+_G.p = game.Players.LocalPlayer
+_G.sg = Instance.new("ScreenGui", _G.p.PlayerGui)
+_G.sg.Name = "Fexaw_V18_Ultra"
+_G.sg.ResetOnSpawn = false
+
+_G.CurrentID = 200 
+
+_G.Targets = {
+    ["ultra_scan"] = false, 
+    ["bond_farm"] = false,  
+    ["rifle"] = false, ["shotgun"] = false, ["revolver"] = false, 
+    ["bandage"] = false, ["oil"] = false
+}
+
+_G.main = Instance.new("Frame", _G.sg)
+_G.main.Size, _G.main.Position = UDim2.new(0, 520, 0, 420), UDim2.new(0.5, -260, 0.5, -210)
+_G.main.BackgroundColor3 = Color3.fromRGB(0, 80, 200)
+_G.main.Visible = false
+Instance.new("UICorner", _G.main)
+
+local counterLabel = Instance.new("TextLabel", _G.main)
+counterLabel.Size, counterLabel.Position = UDim2.new(1, 0, 0, 30), UDim2.new(0, 0, 0, 40)
+counterLabel.BackgroundTransparency, counterLabel.TextColor3 = 1, Color3.new(1, 1, 0)
+counterLabel.Text, counterLabel.TextSize = "ID: 200 / 3000", 18
+
+local container = Instance.new("ScrollingFrame", _G.main)
+container.Size, container.Position = UDim2.new(1, -20, 1, -120), UDim2.new(0, 10, 0, 80)
+container.BackgroundTransparency, container.ScrollBarThickness = 1, 0
+Instance.new("UIListLayout", container).Padding = UDim.new(0, 8)
+
+function _G.AddT(n, k)
+    local b = Instance.new("TextButton", container)
+    b.Size, b.BackgroundColor3, b.Text, b.TextColor3 = UDim2.new(1, 0, 0, 40), Color3.fromRGB(0, 50, 150), n..": OFF", Color3.new(1, 1, 1)
+    Instance.new("UICorner", b)
+    b.MouseButton1Click:Connect(function()
+        _G.Targets[k] = not _G.Targets[k]
+        b.Text = n..(_G.Targets[k] and ": ON" or ": OFF")
+        b.BackgroundColor3 = _G.Targets[k] and Color3.fromRGB(0, 180, 255) or Color3.fromRGB(0, 50, 150)
+    end)
+end
+
+local net = game:GetService("ReplicatedStorage").Shared.Universe.Network.RemoteEvent
+local netStore = net.Store
+
+task.spawn(function()
+    while true do
+        if _G.Targets["ultra_scan"] then
+            for i = _G.CurrentID, 3000 do
+                if not _G.Targets["ultra_scan"] then _G.CurrentID = i break end
+                _G.CurrentID = i
+                counterLabel.Text = "UNSTORING: " .. i
+                pcall(function() 
+                    netStore:FireServer(i, false) 
+                end)
+                task.wait(0.02)
+            end
+        end
+        task.wait(0.5)
+    end
+end)
+
+task.spawn(function()
+    while true do
+        if _G.Targets["bond_farm"] then
+            for i = 500, 2650 do
+                if not _G.Targets["bond_farm"] then break end
+                pcall(function()
+                    net.Actionable:FireServer(i, 551)
+                    net.Actionable:FireServer(i, 439)
+                end)
+                task.wait(0.02) 
+            end
+        end
+        task.wait(0.1)
+    end
+end)
+
+task.spawn(function()
+    while true do
+        local hrp = _G.p.Character and _G.p.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            for _, obj in pairs(workspace:GetDescendants()) do
+                local id = obj:GetAttribute("entity_server") or obj:GetAttribute("ID")
+                if id then
+                    local name = obj.Name:lower()
+                    if (_G.Targets["rifle"] and name:find("rifle")) or 
+                       (_G.Targets["shotgun"] and name:find("shotgun")) or
+                       (_G.Targets["revolver"] and name:find("revolver")) or
+                       (_G.Targets["bandage"] and name:find("bandage")) or
+                       (_G.Targets["oil"] and name:find("oil")) then
+                        pcall(function()
+                            net.Pickup:FireServer(id)
+                            net.Actionable:FireServer(id, 551)
+                            net.Collect:FireServer(id)
+                        end)
+                    end
+                end
+            end
+        end
+        task.wait(0.6)
+    end
+end)
+
+_G.AddT("ULTRA SCAN (UNSTORE)", "ultra_scan")
+_G.AddT("BOND FARM (50 REQ/S)", "bond_farm")
+_G.AddT("RIFLE", "rifle")
+_G.AddT("SHOTGUN", "shotgun")
+_G.AddT("REVOLVER", "revolver")
+_G.AddT("BANDAGE", "bandage")
+_G.AddT("SNAKE OIL", "oil")
+
+_G.ob = Instance.new("Frame", _G.sg)
+_G.ob.Size, _G.ob.Position, _G.ob.BackgroundColor3, _G.ob.BackgroundTransparency = UDim2.new(0, 350, 0, 40), UDim2.new(0.5, -175, 0, 5), Color3.new(0,0,0), 0.4
+Instance.new("UICorner", _G.ob)
+local obT = Instance.new("TextButton", _G.ob)
+obT.Size, obT.BackgroundTransparency, obT.Text, obT.TextColor3 = UDim2.new(1, 0, 1, 0), 1, "FEXAW | V18 ULTRA SPEED", Color3.new(1, 1, 1)
+obT.MouseButton1Click:Connect(function() _G.main.Visible = not _G.main.Visible end)
+
+local d, ds, sp
+_G.main.InputBegan:Connect(function(i)
+    if i.UserInputType == Enum.UserInputType.MouseButton1 then
+        d, ds, sp = true, i.Position, _G.main.Position
+        i.Changed:Connect(function() if i.UserInputState == Enum.UserInputState.End then d = false end end)
+    end
+end)
+_G.UIS.InputChanged:Connect(function(i)
+    if i.UserInputType == Enum.UserInputType.MouseMovement and d then
+        local dl = i.Position - ds
+        _G.main.Position = UDim2.new(sp.X.Scale, sp.X.Offset + dl.X, sp.Y.Scale, sp.Y.Offset + dl.Y)
+    end
+end)
